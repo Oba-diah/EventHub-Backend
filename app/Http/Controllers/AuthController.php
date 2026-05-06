@@ -80,9 +80,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $lastOtp = UserOtp::where('user_id', $user->id)
-            ->latest()
-            ->first();
+        $lastOtp = UserOtp::where('user_id', $user->id)->latest()->first();
 
         if ($lastOtp && now()->lt($lastOtp->created_at->addSeconds(60))) {
             return response()->json([
@@ -105,6 +103,38 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'OTP sent to your email.'
+        ]);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'otp'   => 'required|numeric'
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $otpRecord = UserOtp::where('user_id', $user->id)
+            ->where('otp', $validated['otp'])
+            ->first();
+
+        if (!$otpRecord || now()->gt($otpRecord->expires_at)) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        $otpRecord->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login successful',
+            'token'   => $token,
+            'user'    => $user
         ]);
     }
 
