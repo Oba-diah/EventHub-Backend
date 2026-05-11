@@ -28,23 +28,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'userInfo']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::put('/users/{id}', [UserController::class, 'update']);
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::get('/users/{id}', [UserController::class, 'show']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-    Route::get('/events', [EventController::class, 'index']);
-    Route::post('/events', [EventController::class, 'store']);
-    Route::get('/events/{id}', [EventController::class, 'show']);
-    Route::put('/events/{id}', [EventController::class, 'update']);
-    Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    Route::get('/events', [EventController::class, 'readAllEvents']);
+    Route::post('/events', [EventController::class, 'createEvent']);
+    Route::get('/events/{id}', [EventController::class, 'readEvent']);
+    Route::put('/events/{id}', [EventController::class, 'updateEvent']);
+    Route::delete('/events/{id}', [EventController::class, 'deleteEvent']);
 
-    Route::get('/bookings', [BookingController::class, 'index']);
-    Route::post('/bookings', [BookingController::class, 'store']);
-    Route::get('/bookings/{id}', [BookingController::class, 'show']);
-    Route::put('/bookings/{id}', [BookingController::class, 'update']);
-    Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);
+    Route::get('/bookings', [BookingController::class, 'readAllBookings']);
+    Route::post('/bookings', [BookingController::class, 'createBooking']);
+    Route::get('/bookings/{id}', [BookingController::class, 'readBooking']);
+    Route::put('/bookings/{id}', [BookingController::class, 'updateBooking']);
+    Route::delete('/bookings/{id}', [BookingController::class, 'deleteBooking']);
 
     Route::get('/roles', [RoleController::class, 'readAllRoles']);
     Route::post('/roles', [RoleController::class, 'createRole']);
