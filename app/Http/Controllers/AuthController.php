@@ -38,7 +38,7 @@ class AuthController extends Controller
             'location' => $validated['location'] ?? null,
         ]);
 
-        URL::forceRootUrl(config('app.url'));
+        URL::forceRootUrl('https://eventhub-backend-production-5a22.up.railway.app');
         URL::forceScheme('https');
 
         $verificationUrl = URL::temporarySignedRoute(
