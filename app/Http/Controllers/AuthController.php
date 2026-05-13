@@ -38,6 +38,9 @@ class AuthController extends Controller
             'location' => $validated['location'] ?? null,
         ]);
 
+        URL::forceRootUrl(config('app.url'));
+        URL::forceScheme('https');
+
         $verificationUrl = URL::temporarySignedRoute(
             'email.verify',
             now()->addMinutes(60),
@@ -161,14 +164,15 @@ class AuthController extends Controller
             ], 404);
         }
 
-       
+        URL::forceRootUrl(config('app.url'));
+        URL::forceScheme('https');
+
         if (!URL::hasValidSignature($request)) {
             return response()->json([
                 'message' => 'Invalid or expired verification link'
             ], 403);
         }
 
-        
         if (!$user->email_verified_at) {
             $user->email_verified_at = now();
             $user->save();
