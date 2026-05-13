@@ -8,6 +8,7 @@ use App\Notifications\SendOtpNotification;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 
 class AuthController extends Controller
 {
@@ -37,9 +38,13 @@ class AuthController extends Controller
             'location' => $validated['location'] ?? null,
         ]);
 
-        $verificationUrl = config('app.frontend_url')
-            . '/verify-email?user=' . $user->id
-            . '&hash=' . sha1($user->email);
+        $verificationUrl = URL::temporarySignedRoute(
+            'email.verify',
+            now()->addMinutes(60),
+            [
+                'id' => $user->id,
+            ]
+        );
 
         $user->notify(new VerifyEmailNotification($verificationUrl));
 
@@ -58,7 +63,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $validated['email'])->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'message' => 'Invalid credentials'
             ], 401);
@@ -70,8 +75,10 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Remove old OTPs
         UserOtp::where('user_id', $user->id)->delete();
 
+        // Generate OTP
         $otp = rand(100000, 999999);
 
         UserOtp::create([
@@ -80,13 +87,14 @@ class AuthController extends Controller
             'expires_at' => now()->addMinutes(10),
         ]);
 
+        // Send OTP email
         $user->notify(new SendOtpNotification($otp));
 
         return response()->json([
             'status' => 'otp_sent',
             'message' => 'OTP sent to your email',
             'email' => $user->email
-        ]);
+        ], 200);
     }
 
     public function verifyOtp(Request $request)
@@ -98,7 +106,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $validated['email'])->first();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'message' => 'User not found'
             ], 404);
@@ -108,26 +116,31 @@ class AuthController extends Controller
             ->latest()
             ->first();
 
-        if (! $otpRecord) {
+        if (!$otpRecord) {
             return response()->json([
                 'message' => 'OTP not found'
             ], 404);
         }
 
-        if (now()->greaterThan($otpRecord->expires_at)) {
+        if ($otpRecord->expires_at && now()->greaterThan($otpRecord->expires_at)) {
             return response()->json([
                 'message' => 'OTP expired'
             ], 403);
         }
 
-        if (! Hash::check($validated['otp'], $otpRecord->otp)) {
+        if (!Hash::check($validated['otp'], $otpRecord->otp)) {
             return response()->json([
                 'message' => 'Invalid OTP'
             ], 403);
         }
 
+        // Delete OTP after successful verification
         UserOtp::where('user_id', $user->id)->delete();
 
+        // Delete old tokens
+        $user->tokens()->delete();
+
+        // Create new auth token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -135,36 +148,49 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'user' => $user
-        ]);
+        ], 200);
     }
 
-    public function verifyEmail(Request $request)
+    public function verifyEmail(Request $request, $id)
     {
-        $request->validate([
-            'user' => 'required|integer',
-            'hash' => 'required|string',
-        ]);
+        $user = User::find($id);
 
-        $user = User::find($request->user);
-
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'message' => 'User not found'
             ], 404);
         }
 
-        if (sha1($user->email) !== $request->hash) {
+       
+        if (!URL::hasValidSignature($request)) {
             return response()->json([
-                'message' => 'Invalid verification link'
+                'message' => 'Invalid or expired verification link'
             ], 403);
         }
 
-        $user->email_verified_at = now();
-        $user->save();
+        
+        if (!$user->email_verified_at) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        $user->tokens()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Email verified successfully'
-        ]);
+            'message' => 'Email verified successfully',
+            'token' => $token,
+            'user' => $user,
+            'redirect' => config('app.frontend_url') . '/login'
+        ], 200);
+    }
+
+    public function userInfo(Request $request)
+    {
+        return response()->json([
+            'user' => $request->user()
+        ], 200);
     }
 
     public function logout(Request $request)
@@ -177,6 +203,6 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Logout successful.'
-        ]);
+        ], 200);
     }
 }

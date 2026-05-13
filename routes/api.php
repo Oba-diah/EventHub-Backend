@@ -8,27 +8,35 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserOtpController;
 
-
-//  Public Routes
-
+/*
+|--------------------------------------------------------------------------
+| PUBLIC ROUTES
+|--------------------------------------------------------------------------
+*/
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-otp', [UserOtpController::class, 'verifyOtp']);
 
-Route::get('/verify-email', [AuthController::class, 'verifyEmail']);
+/*
+| Email verification (SIGNED URL)
+*/
+Route::get('/verify-email/{id}', [AuthController::class, 'verifyEmail'])
+    ->name('email.verify');
 
-
-//  Public Event Routes
-
-
+/*
+|--------------------------------------------------------------------------
+| PUBLIC EVENTS
+|--------------------------------------------------------------------------
+*/
 Route::get('/events', [EventController::class, 'readAllEvents']);
 Route::get('/events/{id}', [EventController::class, 'readEvent']);
 
-
-// Protected Routes
-
-
+/*
+|--------------------------------------------------------------------------
+| PROTECTED ROUTES
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
@@ -42,13 +50,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-    // Protected Event Routes
+    // Events
     Route::post('/events', [EventController::class, 'createEvent']);
     Route::put('/events/{id}', [EventController::class, 'updateEvent']);
     Route::delete('/events/{id}', [EventController::class, 'deleteEvent']);
 
     // Bookings
-    Route::get('/bookings', [BookingController::class, 'readAllBookings']);
+    Route::get('/bookings', [BookingController::class, 'readUserBookings']);
+    Route::get('/bookings/all', [BookingController::class, 'readAllBookings']);
     Route::post('/bookings', [BookingController::class, 'createBooking']);
     Route::get('/bookings/{id}', [BookingController::class, 'readBooking']);
     Route::put('/bookings/{id}', [BookingController::class, 'updateBooking']);
