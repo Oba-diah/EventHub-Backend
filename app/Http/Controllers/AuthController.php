@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserOtp;
 use App\Notifications\SendOtpNotification;
-use App\Notifications\VerifyEmailNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\URL;
 
 class AuthController extends Controller
 {
@@ -36,23 +34,13 @@ class AuthController extends Controller
             'gender' => $validated['gender'] ?? null,
             'dateOfBirth' => $validated['dateOfBirth'] ?? null,
             'location' => $validated['location'] ?? null,
+
+            // ✅ auto verify user (NO EMAIL LINK)
+            'email_verified_at' => now(),
         ]);
 
-        URL::forceRootUrl('https://eventhub-backend-production-5a22.up.railway.app');
-        URL::forceScheme('https');
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'email.verify',
-            now()->addMinutes(60),
-            [
-                'id' => $user->id,
-            ]
-        );
-
-        $user->notify(new VerifyEmailNotification($verificationUrl));
-
         return response()->json([
-            'message' => 'Registration successful. Please verify your email.',
+            'message' => 'Registration successful.',
             'user' => $user
         ], 201);
     }
@@ -70,12 +58,6 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Invalid credentials'
             ], 401);
-        }
-
-        if (is_null($user->email_verified_at)) {
-            return response()->json([
-                'message' => 'Please verify your email first'
-            ], 403);
         }
 
         // Remove old OTPs
@@ -137,13 +119,10 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Delete OTP after successful verification
         UserOtp::where('user_id', $user->id)->delete();
 
-        // Delete old tokens
         $user->tokens()->delete();
 
-        // Create new auth token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -151,42 +130,6 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'user' => $user
-        ], 200);
-    }
-
-    public function verifyEmail(Request $request, $id)
-    {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
-        }
-
-        URL::forceRootUrl(config('app.url'));
-        URL::forceScheme('https');
-
-        if (!URL::hasValidSignature($request)) {
-            return response()->json([
-                'message' => 'Invalid or expired verification link'
-            ], 403);
-        }
-
-        if (!$user->email_verified_at) {
-            $user->email_verified_at = now();
-            $user->save();
-        }
-
-        $user->tokens()->delete();
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Email verified successfully',
-            'token' => $token,
-            'user' => $user,
-            'redirect' => config('app.frontend_url') . '/login'
         ], 200);
     }
 
