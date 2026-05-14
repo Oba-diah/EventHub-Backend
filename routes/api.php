@@ -12,30 +12,27 @@ use App\Http\Controllers\UserOtpController;
 Route::options('{any}', function () {
     return response()->json([], 200);
 })->where('any', '.*');
+// Handle CORS preflight
+Route::match(['options', 'OPTIONS'], '{any}', function() {
+    return response('', 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+})->where('any', '.*');
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-otp', [UserOtpController::class, 'verifyOtp']);
 
-/*
-| Email verification (SIGNED URL)
-*/
+
 Route::get('/verify-email/{id}', [AuthController::class, 'verifyEmail'])
     ->name('email.verify');
 
-/*
-|--------------------------------------------------------------------------
-| PUBLIC EVENTS
-|--------------------------------------------------------------------------
-*/
+
 Route::get('/events', [EventController::class, 'readAllEvents']);
 Route::get('/events/{id}', [EventController::class, 'readEvent']);
 
-/*
-|--------------------------------------------------------------------------
-| PROTECTED ROUTES
-|--------------------------------------------------------------------------
-*/
+
 Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
